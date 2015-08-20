@@ -107,11 +107,11 @@ void drawTextBuffer()
   for(;;)
   {
     int a=*b&127;
-    int fg=0xffffff;
+    int fg=0x666666;
     int bg=0x000000;
     if(b>=lightstart && b<=lightend)
     {
-      fg=0x000000; bg=0xffffff;
+      fg=0x000000; bg=0x666666;
       if(y<0) scroll=-y;
       else
       if(y>=28) scroll=27-y;
@@ -232,7 +232,7 @@ void updatescreen()
   if(ui.osd_visible)
   {
     drawTextBuffer();
-    drawStatusPanel();
+    //drawStatusPanel();
   }
   showyuv();
 }
@@ -1090,6 +1090,7 @@ int main(int argc,char**argv)
   ui.opt_dumpmedia=0;
   ui.opt_nonrealtime=0;
   ui.osd_visible=1;
+  int no_audio=0;
   argv++;
   while(*argv)
   {
@@ -1123,6 +1124,8 @@ int main(int argc,char**argv)
           ui.opt_dumpmedia=1;
           ui.opt_nonrealtime=1;
           break;
+        case('a'):
+          no_audio=1;
       }
     } else
     {
@@ -1161,7 +1164,8 @@ int main(int argc,char**argv)
    as.channels=1;
    as.samples=512;
    as.callback=updateaudio;
-   SDL_OpenAudio(&as,NULL);
+   if(!no_audio)
+       SDL_OpenAudio(&as,NULL);
    DEBUG(stderr,"buffer size: %d\n",as.samples);
   }
   
