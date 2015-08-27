@@ -4,8 +4,13 @@
 #include <SDL/SDL.h>
 #endif
 #define IBNIZ_MAIN
+#include <errno.h>
 #include "ibniz.h"
 #include "texts.i"
+
+#define VIDEO_WIDTH		256
+#define VIDEO_HEIGHT		256
+#define BYTES_PER_PIXEL	2
 
 struct
 {
@@ -45,6 +50,8 @@ struct
   int subframe;
   char audiopaused;
 } dumper;
+
+static void *frameBuffer = NULL;
 
 #define WIDTH 256
 
@@ -150,7 +157,14 @@ void drawString(char*s,int x,int y)
 
 void drawStatusPanel()
 {
-  char buf[24];
+    char buf[24];
+    if(ui.fps>0)
+    {
+        sprintf(buf,"%2.4f fps",ui.fps);
+        drawString(buf,0,30);
+    }
+    return;
+  
   int sgn,spc;
   uint32_t a;
   sprintf(buf,"T=%04X",gettimevalue()&0xFFFF);
@@ -194,7 +208,7 @@ void drawStatusPanel()
 
   a=vm.prevstackval[1];
   sprintf(buf,"%04X.%04X",(a>>16)&0xFFFF,a&0xFFFF);
-  drawString(buf,21,31);
+  drawString(buf,21,30);
 }
 
 void showyuv()
@@ -232,7 +246,7 @@ void updatescreen()
   if(ui.osd_visible)
   {
     drawTextBuffer();
-    //drawStatusPanel();
+    drawStatusPanel();
   }
   showyuv();
 }
@@ -241,17 +255,19 @@ void updatescreen()
 
 int getticks()
 {
-  if(!ui.opt_nonrealtime)
+//  if(!ui.opt_nonrealtime)
 #ifdef __APPLE__
   /* please find a proper fix */
     return SDL_GetTicks()/3;
 #else
     return SDL_GetTicks();
 #endif
+    /*
   else
   {
     return dumper.framecount*50/3;
   }
+     */
 }
 
 uint32_t getcorrectedticks()
@@ -408,19 +424,21 @@ void pollplaybackevent(SDL_Event*e)
 
 void dumpmediaframe()
 {
-  static char isfirst=1;
+  static char isfirst_=1;
   int x,y;
-  int16_t ab[735];
+  //int16_t ab[735];
 
-  if(isfirst)
+  if(isfirst_)
   {
     printf("YUV4MPEG2 W%d H%d F%d:%d Ip A0:0 C420mpeg2 XYSCSS=420MPEG2\n",
       640,480,60,1);
-    isfirst=0;
+    isfirst_=0;
   }
   printf("FRAME\n");
 
-  updatescreen();
+  //updatescreen();
+    
+    SDL_LockSurface(sdl.s);
   for(y=8*2;y<248*2;y++)
   {
     for(x=0;x<32*2;x++) putchar(0);
@@ -433,6 +451,7 @@ void dumpmediaframe()
     for(x=0;x<32*2;x++) putchar(0);
   }
 
+    
   for(y=8;y<248;y++)
   {
     for(x=0;x<32;x++) putchar(0x80);
@@ -454,6 +473,7 @@ void dumpmediaframe()
     }
     for(x=0;x<32;x++) putchar(0x80);
   }
+    SDL_UnlockSurface( sdl.s );
   /*
   if(!dumper.audiopaused)
     updateaudio(NULL,(uint8_t*)ab,735*2);
@@ -463,14 +483,93 @@ void dumpmediaframe()
    */
 }
 
+void dumpmediaframe_new()
+{
+    static char isfirst=1;
+    static char isInit=0;
+    int x,y;
+    //int16_t ab[735];
+    
+    if(isfirst)
+    {
+        //YUV4MPEG2 W%d H%d F%d:%d Ip A1:1 C422 XYSCSS=422
+        //YUV4MPEG2 W%d H%d F%d:%d Ip A1:1 C422mpeg2 XYSCSS=422MPEG2
+        //YUV4MPEG2 W%d H%d F%d:%d Ip A0:0 C420mpeg2 XYSCSS=420MPEG2
+        frameBuffer = malloc( VIDEO_WIDTH * VIDEO_HEIGHT * BYTES_PER_PIXEL );
+        /*
+        printf("YUV4MPEG2 W%d H%d F%d:%d Ip A0:0 C420mpeg2 XYSCSS=420MPEG2\n",
+               640,480,60,1);
+        */
+        printf("YUV4MPEG2 W%d H%d F%d:%d Ip A1:1 C422mpeg2 XYSCSS=422MPEG2\n",
+               256,256,30,1);
+        /*
+        printf("YUV4MPEG2 W%d H%d F%d:%d Ip A1:1 C420mpeg2 XYSCSS=420MPEG2\n",
+               256,256,30,1);
+         */
+        isInit = 1;
+        isfirst=0;
+    }
+    
+    updatescreen();
+    
+    if( isInit ) {
+        char *frameBufferChar = (char*)frameBuffer;
+        
+        size_t bufSize = (VIDEO_WIDTH*VIDEO_HEIGHT*BYTES_PER_PIXEL);
+        
+        Uint8 *pixels = sdl.o->pixels[0];
+        memcpy(frameBufferChar, sdl.o->pixels[0], bufSize);
+        
+        /*
+        // demo out method
+        int macroPixel = 0;
+        int i = 0;
+        for( y = 0 ; y < VIDEO_HEIGHT ; y++ ) {
+            for( x = 0 ; x < (VIDEO_WIDTH/2) ; x++ ) {
+                // ibniz uses YUY2 format, 4 bytes per 2 pixels  - y1, u, y2, v
+                // we're going to convert to UYVY format - u, y1, v, y2
+                Uint8 *pixels = sdl.o->pixels[0];
+                frameBufferChar[i++] = pixels[(macroPixel*4)];
+                frameBufferChar[i++] = pixels[(macroPixel*4)+1];
+                frameBufferChar[i++] = pixels[(macroPixel*4)+2];
+                frameBufferChar[i++] = pixels[(macroPixel*4)+3];
+                macroPixel++;
+            }
+        }
+         */
+        
+        // write to device
+        renderFrame( frameBuffer );
+    }
+}
+
+
+int renderFrame( void *writeBuffer )
+{
+    size_t bytes, bufSize;
+    bufSize = (VIDEO_WIDTH*VIDEO_HEIGHT*BYTES_PER_PIXEL);
+    printf("FRAME\n");
+    fwrite( writeBuffer, bufSize, 1, stdout);
+    //bytes = write( stdout, writeBuffer, bufSize );
+    /*
+    if( bytes != bufSize ) {
+        fprintf (stderr, "Error %s writing frame\n",strerror(errno));
+        return 0;
+    }
+     */
+    return 1;
+}
+
 void nrtframestep()
 {
+    /*
   dumper.subframe=0;
   dumper.framecount++;
   if(ui.opt_dumpmedia)
   {
-    dumpmediaframe();
+    //dumpmediaframe();
   }
+     */
 }
 
 /*** editor functions ***/
@@ -826,7 +925,9 @@ void interactivemode(char*codetoload)
       ui.cyclecounter=ui.framecounter=0;
       ui.bmtime=t;
     }
-      dumpmediaframe();
+      if( ui.opt_dumpmedia ) {
+          dumpmediaframe();
+      }
     if(ui.runstat==0)
     {
       if(!ui.opt_playback)
@@ -852,12 +953,14 @@ void interactivemode(char*codetoload)
         if(codechanged) 
         {
           vm_compile(ed_getprogbuf());
+            /*
           if(ui.audio_off)
           {
             ui.audio_off=0;
             pauseaudio(0);
           }
-          codechanged=0;
+             */
+            codechanged=0;
         }
         {
           int c = vm_run();
@@ -868,8 +971,8 @@ void interactivemode(char*codetoload)
           dumper.subframe++;
           if(!(dumper.subframe&4095)) nrtframestep();
         }
-        checkmediaformats();
-        scheduler_check();
+        //checkmediaformats();
+        //scheduler_check();
         continue;
       }
     }
@@ -1124,7 +1227,7 @@ int main(int argc,char**argv)
           break;
         case('M'):
           ui.opt_dumpmedia=1;
-          ui.opt_nonrealtime=0;
+          //ui.opt_nonrealtime=0;
           break;
         case('a'):
           no_audio=1;

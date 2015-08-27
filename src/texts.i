@@ -14,12 +14,7 @@ char*versiontext=
 
 char*welcometext=
   "\n"
-  "\n"
-  "\n"
-  "\n"
-  "\\ IBNIZ 1.1C00-NORELEASE\n"
-  "\\\n"
-  "\\ Press f12 for help.\n";
+  "\\ IBNIZ_D3 - Fork\n";
 
 char*helpscreen=
  ////////////////////////////////
