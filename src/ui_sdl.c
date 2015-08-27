@@ -454,12 +454,13 @@ void dumpmediaframe()
     }
     for(x=0;x<32;x++) putchar(0x80);
   }
-  
+  /*
   if(!dumper.audiopaused)
     updateaudio(NULL,(uint8_t*)ab,735*2);
   else
     memset(ab,0,735*2);
   fwrite(ab,735*2,1,stderr);
+   */
 }
 
 void nrtframestep()
@@ -825,6 +826,7 @@ void interactivemode(char*codetoload)
       ui.cyclecounter=ui.framecounter=0;
       ui.bmtime=t;
     }
+      dumpmediaframe();
     if(ui.runstat==0)
     {
       if(!ui.opt_playback)
@@ -1122,7 +1124,7 @@ int main(int argc,char**argv)
           break;
         case('M'):
           ui.opt_dumpmedia=1;
-          ui.opt_nonrealtime=1;
+          ui.opt_nonrealtime=0;
           break;
         case('a'):
           no_audio=1;
