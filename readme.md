@@ -12,7 +12,7 @@ This version is licenced under the GPL v3 licence, (see src/licence.txt)
 
 ### Video output
 
-Working video output to file is a priority. So far this works but with a very low framerate, depending on how much work the virtual machine is doing, i.e. the complexity of the current program.
+Working video output to file is a priority. So far this works but with a ~~very low~~ **now improved** framerate, depending on how much work the virtual machine is doing, i.e. the complexity of the current program.
 
 The the following to output live to a file vid.avi with no audio:
 

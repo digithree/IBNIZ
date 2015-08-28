@@ -143,13 +143,16 @@ void flipvideopage()
   vm.videotime=gettimevalue();
 }
 
+
 void pmv_audio()
 {
+    /*
   vm.currentwcount[vm.mediacontext]++;
   if(!vm.sp) // todo we need something better
     vm.audiotime+=64;
   MOVESP(1);
   vm.stack[vm.sp]=vm.audiotime*65536+vm.sp*64;
+     */
 }
 
 void pmv_video_t()
@@ -224,7 +227,8 @@ void pushmediavariables()
   }
 }
 
-#define CYCLESPERRUN 10223
+//#define CYCLESPERRUN 10223
+#define CYCLESPERRUN 102230
 int vm_run()
 {
   int cycles;
