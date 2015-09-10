@@ -17,7 +17,13 @@ Working video output to file is a priority. So far this works but with a ~~very 
 The the following to output live to a file vid.avi with no audio:
 
 ```bash
-./ibniz -a -M | ffmpeg -y -i - -r 30 vid.avi
+./ibniz -a -M | ffmpeg -y -i - -r 30 -vcodec h264 vid.avi
+```
+
+If you what higher quality you can specify the bitrate, for example 2mb bitrate:
+
+```bash
+./ibniz -a -M | ffmpeg -y -i - -r 30 -vcodec h264 -b 2000k vid.avi
 ```
 
 Note also that there is some timing discrepancy between the realtime video stream and the video playback speed - the video is faster, i.e. skipping frames. I think that the virtual machine will need to be optimised to get higher framerate output.
